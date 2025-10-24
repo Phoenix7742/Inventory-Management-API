@@ -1,0 +1,77 @@
+@page "/fetchproducts"
+<h3>Product List</h3>
+
+@if (isLoading)
+{
+    <p>Loading products...</p>
+}
+else if (hasError)
+{
+    <p class="text-danger">Failed to load products. Please try again later.</p>
+}
+else if (products?.Length > 0)
+{
+    <ul>
+        @foreach (var product in products)
+        {
+            <li>@product.Name - $@product.Price</li>
+        }
+    </ul>
+}
+else
+{
+    <p>No products available.</p>
+}
+
+@code {
+    private Product[]? products;
+    private bool isLoading = true;
+    private bool hasError = false;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Http.GetAsync("api/products");
+
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadFromJsonAsync<Product[]>();
+                products = content ?? Array.Empty<Product>();
+            }
+            else
+            {
+                hasError = true;
+                Console.WriteLine($"API returned error: {response.StatusCode}");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            hasError = true;
+            Console.WriteLine($"Request error: {ex.Message}");
+        }
+        catch (TaskCanceledException ex)
+        {
+            hasError = true;
+            Console.WriteLine($"Request timed out: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            Console.WriteLine($"Unexpected error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    [Inject]
+    public HttpClient Http { get; set; } = default!;
+    public class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public double Price { get; set; }
+        public int Stock { get; set; }
+    }
+}
